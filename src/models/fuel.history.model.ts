@@ -3,8 +3,8 @@ export { };
 const mongoose = require('mongoose');
 
 const FuelHistorySchema = new mongoose.Schema({
-    trip: String,
-    drivers: String,
+    // trip: String,
+    driver: String,
     vehicle: String,
     fuel: Number,
     sensorId: String,

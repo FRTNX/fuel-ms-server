@@ -15,6 +15,9 @@ router.route('/api/v0/vehicle')
 router.route('/api/v0/vehicles')
     .get(vehicleCtrl.readAll)
 
+router.route('/api/v0/sensor')
+    .get(vehicleCtrl.getFuelHistory)
+    .post(vehicleCtrl.recordSensorData);
 
 router.route('/api/v0/ping')
     .get(vehicleCtrl.ping);

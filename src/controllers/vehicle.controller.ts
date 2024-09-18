@@ -1,6 +1,9 @@
+import { request } from "http";
+
 export { };
 
 const Vehicle = require('../models/vehicle.model');
+const FuelHistory = require('../models/fuel.history.model');
 
 const create = async (request, response) => {
     try {
@@ -81,7 +84,7 @@ const update = async (request, response) => {
 
         // todo: key validation
         Object.keys(updateValues).map((key) => vehicle[key] = updateValues[key]);
-        await vehicle.save();       
+        await vehicle.save();
 
         return response.json({ result: 'SUCCESS' });
     } catch (error) {
@@ -104,6 +107,81 @@ const remove = async (request, response) => {
     }
 };
 
+const recordSensorData = async (request, response) => {
+    try {
+        const { fuel, sensorId } = request.body;
+        const vehicle = await Vehicle.findOne({ sensorId });
+        if (vehicle) {
+            const { driver, license, fuelCapacity } = vehicle;
+            const fuelPercentage = Number(fuel / fuelCapacity).toFixed(2);
+            const fuelHistory = new FuelHistory({
+                sensorId,
+                vehicle: license,
+                fuel: fuelPercentage,
+                driver
+            });
+
+            vehicle.fuel = fuelPercentage;
+
+            await fuelHistory.save();
+            await vehicle.save();
+            return response.json({ result: 'SUCCESS' });
+        }
+
+        throw new Error('Vehicle not found')
+    } catch (error) {
+        console.log(error);
+        return response.status(400).json({ result: 'NOPE' })
+    }
+};
+
+const getFuelHistory = async (request, response) => {
+    try {
+        const { vehicle } = request.query;
+        if (vehicle) {
+            const fuelHistory = await FuelHistory.find({ vehicle }).limit(20).sort('-created');
+            const fuelData = fuelHistory.map((data) => ({ fuel: data.fuel * 100 }));
+            return response.json(fuelData.reverse())
+        }
+
+        const fuelData = {};
+        const data = [];
+        const vehicles = await Vehicle.find({});
+
+        for (let i = 0; i < vehicles.length; i++) {
+            const vehicle = vehicles[i];
+            const fuelHistory = await FuelHistory.find({ vehicle: vehicle.license }).limit(20).sort('-created');
+            fuelData[vehicle.license] = fuelHistory.map((data) => data.fuel * 100)
+        }
+        // todo: ensure all fuel datapoints have same shape
+
+        for (let i = 0; i < 20; i++) {
+            console.log('compiled fuel data:', Object.keys(fuelData))
+            const datapoint = {};
+            Object.keys(fuelData).map((vehicle) => {
+                datapoint[vehicle] = fuelData[vehicle][i]
+            });
+            console.log('created datapoint:', datapoint)
+            data.push(datapoint);
+        }
+
+        console.log('compiled vehicle fuel history:', data.reverse())
+        return response.json(data);
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+const compileFuelData = async (vehicles) => {
+    const fuelData = {};
+    for (let i = 0; i < vehicles.length; i++) {
+        const vehicle = vehicles[i];
+        const fuelHistory = await FuelHistory.find({ vehicle: vehicle.license }).limit(20);
+        // console.log('raw fuel history:', fuelHistory)
+        fuelData[vehicle.license] = fuelHistory.map((data) => data.fuel * 100)
+    }
+}
+
 const ping = async (request, response) => {
     try {
         return response.json({ message: 'pong' });
@@ -118,5 +196,7 @@ module.exports = {
     readAll,
     update,
     remove,
+    recordSensorData,
+    getFuelHistory,
     ping
 };

@@ -43,7 +43,6 @@ const readAll = async (request, response) => {
         const { search, driverClass } = request.query;
         let query = {};
         if (search) {
-            // query.manufacturer = { '$regex': search, '$options': 'i' }
             query = {
                 fullname: { '$regex': search, '$options': 'i' },
                 nationalId: { '$regex': search, '$options': 'i' },
