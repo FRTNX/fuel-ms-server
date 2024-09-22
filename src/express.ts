@@ -8,6 +8,7 @@ const helmet = require('helmet');
 
 const vehicleRoutes = require('./routes/vehicle.routes');
 const driverRoutes = require('./routes/driver.routes');
+const fuelPolicyRoutes = require('./routes/fuel.policy.routes');
 // const tripRoutes = require('./routes/trip.routes');
 
 
@@ -33,7 +34,8 @@ app.use(cors());
 
 app.use('/', vehicleRoutes);
 app.use('/', driverRoutes);
-// app.use('/', tripRoutes);
+app.use('/', fuelPolicyRoutes);
+// app.use('/', tripRoutes);cosnt
 
 
 app.use('*', (request: IRequest, response: IResponse, next: Function): IResponse => {

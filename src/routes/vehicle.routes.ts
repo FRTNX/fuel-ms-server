@@ -19,7 +19,11 @@ router.route('/api/v0/sensor')
     .get(vehicleCtrl.getFuelHistory)
     .post(vehicleCtrl.recordSensorData);
 
+router.route('/api/v0/sensors/ping')
+    .get(vehicleCtrl.launchSensorSimulators);
+
 router.route('/api/v0/ping')
     .get(vehicleCtrl.ping);
+
 
 module.exports = router;
