@@ -23,7 +23,7 @@ const logit = (request: IRequest, response: IResponse, next: Function) => {
     next();
 };
 
-app.use(logit);
+// app.use(logit);
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded());
 

@@ -34,6 +34,9 @@ const VehicleSchema = new mongoose.Schema({
         type: Number,
         default: 0.6
     },
+    standardConsumptionRate: Number,
+    consumptionRate: Number,
+    consumptionStatus: String,
     fuelCapacity: Number,
     sensorId: String,
     created: {

@@ -3,8 +3,11 @@ import { request } from "http";
 export { };
 
 const Vehicle = require('../models/vehicle.model');
+const ConsumptionRecord = require('../models/consumption.record.model');
+
 const FuelHistory = require('../models/fuel.history.model');
 const FuelPolicy = require('../models/fuel.policy.model');
+
 const EmailRecipients = require('../models/email.recipient.model');
 
 const random = require('../helpers/random');
@@ -230,21 +233,12 @@ const notifyAdmins = async (vehicle) => {
                 },
                 body: JSON.stringify(body)
             });
-
-            // this way we only get notified of violations at intervals to avoid email
-            // flooding during testing
-
-            // use mogodb ttl architecture instead
-            // setTimeout(() => {
-            //     const index = RECENT_NOTIFICATIONS.indexOf(license);
-            //     RECENT_NOTIFICATIONS.splice(index, 1);
-            //     console.log('updated recents: ', RECENT_NOTIFICATIONS)
-            // }, 5000)
-
         }
 
+        return { result: 'SUCCESS' };
     } catch (error) {
         console.log('Email Notification Error:', error);
+        return { error };
     }
 };
 
@@ -262,7 +256,9 @@ const recordSensorData = async (request, response) => {
         const { fuel, sensorId } = request.body;
         const vehicle = await Vehicle.findOne({ sensorId });
         const fuelPolicy = await getFuelPolicy();
+
         if (vehicle) {
+            // first check if fuel level is below threshold. if so, notify the powers that be.
             const { driver, license, fuelCapacity } = vehicle;
             const fuelPercentage = Number(fuel / fuelCapacity).toFixed(2);
             const fuelHistory = new FuelHistory({
@@ -277,8 +273,6 @@ const recordSensorData = async (request, response) => {
             await fuelHistory.save();
             await vehicle.save();
 
-            console.log('current fuel percentage:', Number(fuelPercentage))
-            console.log('fuel threshold:', fuelPolicy.threshold)
             if (Number(fuelPercentage) < Number(fuelPolicy.threshold)) {
                 await notifyAdmins(vehicle)
             } else {
@@ -289,6 +283,7 @@ const recordSensorData = async (request, response) => {
                 }
             }
 
+
             return response.json({ result: 'SUCCESS' });
         }
 
@@ -296,6 +291,119 @@ const recordSensorData = async (request, response) => {
     } catch (error) {
         console.log(error);
         return response.status(400).json({ error });
+    }
+};
+
+const monitorFuelConsumption = async (request, response) => {
+    try {
+        // consider selecting only active vehicles.
+        // whether a vehicle is active should be determined by how long ago its
+        // last fuel record was or if that reading has remained the same over a
+        // certain number of entries.
+        const vehicles = await Vehicle.find({});
+        for (let i = 0; i < vehicles.length; i++) {
+            await checkFuelConsumption(vehicles[i]);
+        }
+
+        return response.json({ result: 'SUCCESS' });
+    } catch (error) {
+        console.log(error);
+        return response.status(400).json({ error });
+    }
+};
+
+/**
+ * This function is called once every interval. 
+ * It first collects data and determines how much fuel is spent in each interval
+ * then uses this fluid average to measure increases or decreases in fuel consumption.
+ * @param request 
+ * @param response 
+ * @returns 
+ */
+const checkFuelConsumption = async (vehicle) => {
+    try {
+        // console.log('checking consumption for vehicle:', vehicle)
+        // now check if fuel consumption is nominal or abnormal for this vehicle
+        // todo: inspect to ensure last entry
+        const consumptionRecords = await ConsumptionRecord.find({ vehicle: vehicle.license }).sort('-created');
+        // console.log('found records:', consumptionRecords)
+
+        // if this is the first consumption record for this vehicle
+        if (consumptionRecords.length === 0) {
+            const consumptionRecord = new ConsumptionRecord({
+                vehicle: vehicle.license,
+                driver: vehicle.driver,
+                fuel: vehicle.fuel,
+                diff: 0,
+                status: 'unknown'
+            });
+
+            await consumptionRecord.save();
+            return { vehicle: vehicle.license, diff: 0, status: 'unknown' };
+        }
+
+        // first confirm that vehicle is currently burning fuel
+        console.log('prev fuel:', consumptionRecords[0].fuel)
+        console.log('current fuel:', vehicle.fuel)
+        if (consumptionRecords[0].fuel < vehicle.fuel) {
+            console.log('refill detected.')
+            // just log fuel change
+            const consumptionRecord = new ConsumptionRecord({
+                vehicle: vehicle.license,
+                driver: vehicle.driver,
+                fuel: vehicle.fuel,
+                diff: 0,
+                status: 'unknown'
+            });
+
+            await consumptionRecord.save();
+            return { vehicle: vehicle.license, diff: 0, status: 'unknown' };
+        }
+        // get the difference between the current reading and the last checkup
+        const diff = (consumptionRecords[0].fuel - vehicle.fuel) * 100;
+        console.log('diff:', diff)
+
+        // determine the percentage of difference between current reading and standard consumption
+        const rateOfChange = diff / vehicle.standardConsumptionRate * 100;
+        console.log(`deviation from mean: ${rateOfChange}%`)
+
+        let status: string;
+        if (consumptionRecords.length > 100) {
+            status = diff > vehicle.standardConsumptionRate ? 'abnormal' : 'nominal'
+        } else {
+            console.log('not enough data to determine status:', consumptionRecords.length)
+            status = 'unknown'; // not enough data form distinction
+        }
+
+        if (status === 'abnormal') {
+            console.log('abnormal consumption detected. notifying admins')
+            // notify admins
+        }
+
+        const diffs = consumptionRecords.map((record) => record.diff).filter((value) => value !== 0);
+        diffs.push(diff);
+        const diffSum = diffs.reduce((partSum, value) => partSum + value, 0);
+        const averageConsumption = diffSum / diffs.length;
+        console.log('diffs:', diffs.length)
+        vehicle.consumptionStatus = status;
+        vehicle.consumptionRate = diff;
+        vehicle.standardConsumptionRate = averageConsumption
+
+        const consumptionRecord = new ConsumptionRecord({
+            vehicle: vehicle.license,
+            driver: vehicle.driver,
+            fuel: vehicle.fuel,
+            diff,
+            status
+        });
+
+        await consumptionRecord.save()
+        await vehicle.save();
+
+        return { vehicle: vehicle.license, diff, status };
+    } catch (error) {
+        console.log(error);
+        return { error };
     }
 };
 
@@ -395,5 +503,6 @@ module.exports = {
     getFuelHistory,
     ping,
     notifyAdmins,
-    launchSensorSimulators
+    launchSensorSimulators,
+    monitorFuelConsumption
 };

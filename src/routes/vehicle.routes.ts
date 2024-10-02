@@ -12,6 +12,10 @@ router.route('/api/v0/vehicle')
     .put(vehicleCtrl.update)
     .delete(vehicleCtrl.remove);
 
+// called by cron job every minute
+router.route('/api/v0/vehicle/consumption')
+    .get(vehicleCtrl.monitorFuelConsumption)
+
 router.route('/api/v0/vehicles')
     .get(vehicleCtrl.readAll)
 
