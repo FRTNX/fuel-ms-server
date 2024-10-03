@@ -122,7 +122,7 @@ const read = async (request, response) => {
         // note: ensure key is legal/valid
 
         const vehicle = await Vehicle.findOne({ [key]: value });
-        console.log('found vehicle: ', vehicle)
+        // console.log('found vehicle: ', vehicle)
 
         return response.json(vehicle);
     } catch (error) {
@@ -289,7 +289,7 @@ const recordSensorData = async (request, response) => {
 
         throw new Error('Vehicle not found')
     } catch (error) {
-        console.log(error);
+        // console.log(error);
         return response.status(400).json({ error });
     }
 };
@@ -362,6 +362,9 @@ const checkFuelConsumption = async (vehicle) => {
         // get the difference between the current reading and the last checkup
         const diff = (consumptionRecords[0].fuel - vehicle.fuel) * 100;
         console.log('diff:', diff)
+        if (diff === 0) {
+            return { result: 'TOO_SOON' }
+        }
 
         // determine the percentage of difference between current reading and standard consumption
         const rateOfChange = diff / vehicle.standardConsumptionRate * 100;
@@ -369,7 +372,7 @@ const checkFuelConsumption = async (vehicle) => {
 
         let status: string;
         if (consumptionRecords.length > 100) {
-            status = diff > vehicle.standardConsumptionRate ? 'abnormal' : 'nominal'
+            status = rateOfChange > 100 ? 'abnormal' : 'nominal'
         } else {
             console.log('not enough data to determine status:', consumptionRecords.length)
             status = 'unknown'; // not enough data form distinction
@@ -380,13 +383,14 @@ const checkFuelConsumption = async (vehicle) => {
             // notify admins
         }
 
+        // consider filtering out anomalies when calculating average
         const diffs = consumptionRecords.map((record) => record.diff).filter((value) => value !== 0);
         diffs.push(diff);
         const diffSum = diffs.reduce((partSum, value) => partSum + value, 0);
         const averageConsumption = diffSum / diffs.length;
-        console.log('diffs:', diffs.length)
+        // console.log('diffs:', diffs.length)s
         vehicle.consumptionStatus = status;
-        vehicle.consumptionRate = diff;
+        vehicle.consumptionRate = diff + Math.random();
         vehicle.standardConsumptionRate = averageConsumption
 
         const consumptionRecord = new ConsumptionRecord({
