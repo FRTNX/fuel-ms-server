@@ -357,7 +357,7 @@ const checkFuelConsumption = async (vehicle) => {
             });
 
             await consumptionRecord.save();
-            return { vehicle: vehicle.license, diff: 0, status: 'unknown' };
+            return { result: 'REFILL' };
         }
         // get the difference between the current reading and the last checkup
         const diff = (consumptionRecords[0].fuel - vehicle.fuel) * 100;
@@ -410,6 +410,17 @@ const checkFuelConsumption = async (vehicle) => {
         return { error };
     }
 };
+
+const getFuelConsumptionHistory = async (request, response) => {
+    try {
+        const { id } = request.query;
+        const consumptionRecords = await ConsumptionRecord.find({ vehicle: id, diff: { '$ne': 0 } }).sort('-created').limit(20);
+        return response.json(consumptionRecords.reverse());
+    } catch (error) {
+        console.log(error);
+        return response.statuus(400).json({ error });
+    }
+}
 
 const getFuelHistory = async (request, response) => {
     try {
@@ -481,7 +492,7 @@ const launchSensorSimulators = async (request, response) => {
             },
             body: JSON.stringify(sensorData)
         });
-        return response.json({ result: 'SUCCESS' })
+        return response.json({ result: 'SUCCESS' });
     } catch (error) {
         console.log(error);
         return response.status(400).json({ error });
@@ -505,6 +516,7 @@ module.exports = {
     remove,
     recordSensorData,
     getFuelHistory,
+    getFuelConsumptionHistory,
     ping,
     notifyAdmins,
     launchSensorSimulators,

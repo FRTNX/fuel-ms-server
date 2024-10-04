@@ -12,9 +12,8 @@ router.route('/api/v0/vehicle')
     .put(vehicleCtrl.update)
     .delete(vehicleCtrl.remove);
 
-// called by cron job every minute
 router.route('/api/v0/vehicle/consumption')
-    .get(vehicleCtrl.monitorFuelConsumption)
+    .get(vehicleCtrl.getFuelConsumptionHistory);
 
 router.route('/api/v0/vehicles')
     .get(vehicleCtrl.readAll)
@@ -29,5 +28,8 @@ router.route('/api/v0/sensors/ping')
 router.route('/api/v0/ping')
     .get(vehicleCtrl.ping);
 
+// called by cron job every <interval>
+router.route('/api/v0/fuel/consumption')
+    .get(vehicleCtrl.monitorFuelConsumption)
 
 module.exports = router;
