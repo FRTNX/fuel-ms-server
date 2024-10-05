@@ -274,7 +274,7 @@ const recordSensorData = async (request, response) => {
             await vehicle.save();
 
             if (Number(fuelPercentage) < Number(fuelPolicy.threshold)) {
-                await notifyAdmins(vehicle)
+                // await notifyAdmins(vehicle)
             } else {
                 if (RECENT_NOTIFICATIONS.includes(vehicle.license)) {
                     const index = RECENT_NOTIFICATIONS.indexOf(vehicle.license);
@@ -318,7 +318,7 @@ const monitorFuelConsumption = async (request, response) => {
  * then uses this fluid average to measure increases or decreases in fuel consumption.
  * @param request 
  * @param response 
- * @returns 
+ * @returns response
  */
 const checkFuelConsumption = async (vehicle) => {
     try {
