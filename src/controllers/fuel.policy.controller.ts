@@ -20,6 +20,7 @@ const createFuelPolicy = async (request, response) => {
         return response.json({ result: 'SUCCESS' });
     } catch (error) {
         console.log(error);
+        return response.status(400).json({ error });
     }
 };
 
@@ -30,6 +31,7 @@ const getFuelPolicy = async (request, response) => {
         return response.json(fuelPolicy);
     } catch (error) {
         console.log(error);
+        return response.status(400).json({ error });
     }
 };
 
@@ -44,12 +46,16 @@ const updateFuelPolicy = async (request, response) => {
         return response.json({ result: 'SUCCESS' })
     } catch (error) {
         console.log(error)
+        return response.status(400).json({ error });
     }
 };
 
 const createEmailRecipient = async (request, response) => {
     try {
         const { name, email } = request.body;
+        if (!name || !email) {
+            return response.status(400).json({ result: 'MISSING_REQUIRED_PARAMS' });
+        }
         const recipient = new EmailRecipient({
             name,
             email
@@ -60,6 +66,7 @@ const createEmailRecipient = async (request, response) => {
         return response.json({ result: 'SUCCESS' });
     } catch (error) {
         console.log(error);
+        return response.status(400).json({ error });
     }
 };
 
@@ -78,6 +85,7 @@ const getEmailRecipients = async (request, response) => {
         return response.json(recipients);
     } catch (error) {
         console.log(error);
+        return response.status(400).json({ error });
     }
 };
 
@@ -91,6 +99,7 @@ const updateEmailRecipient = async (request, response) => {
         return response.json({ result: 'SUCCESS' });
     } catch (error) {
         console.log(error);
+        return response.status(400).json({ error });
     }
 };
 
@@ -103,6 +112,7 @@ const removeEmailRecipient = async (request, response) => {
         return response.json({ result: 'SUCCESS' });
     } catch (error) {
         console.log(error);
+        return response.status(400).json({ error });
     }
 };
 
